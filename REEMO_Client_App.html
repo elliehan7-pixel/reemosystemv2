@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Re:Emo — Client App</title>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Sans:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+
+:root {
+  --bg:       #0A0C14;
+  --surface:  #12141E;
+  --surface2: #1A1C28;
+  --surface3: #222438;
+  --border:   rgba(255,255,255,0.07);
+  --border2:  rgba(255,255,255,0.12);
+  --text:     #EDE8E0;
+  --muted:    rgba(237,232,224,0.45);
+  --dim:      rgba(237,232,224,0.25);
+
+  /* REEMO character colours */
+  --delulu:   #C070F0;
+  --dopamine: #F0B020;
+  --cooked:   #7080D8;
+  --toxic:    #50B840;
+  --fomo:     #E07030;
+  --spiral:   #A050D0;
+  --salty:    #5090C8;
+
+  /* accent */
+  --gold:     #D4A84B;
+  --gold-lt:  rgba(212,168,75,0.15);
+  --mint:     #6AB890;
+  --mint-lt:  rgba(106,184,144,0.12);
+}
+
+html { font-size: 16px; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* ── PHONE SHELL ── */
+.phone-shell {
+  width: 390px;
+  min-height: 844px;
+  background: var(--bg);
+  border-radius: 50px;
+  border: 1.5px solid rgba(255,255,255,0.12);
+  box-shadow:
+    0 0 0 6px rgba(255,255,255,0.04),
+    0 40px 120px rgba(0,0,0,0.8),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Dynamic island */
+.dynamic-island {
+  width: 120px;
+  height: 34px;
+  background: #000;
+  border-radius: 20px;
+  margin: 12px auto 0;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+
+/* ── SCREENS ── */
+.screen { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+.screen.active { display: flex; }
+
+/* ── BOTTOM NAV ── */
+.bottom-nav {
+  height: 80px;
+  background: rgba(18,20,30,0.98);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 8px 16px;
+  flex-shrink: 0;
+}
+.nav-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 12px;
+}
+.nav-tab:hover { background: rgba(255,255,255,0.04); }
+.nav-icon-wrap {
+  width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  position: relative;
+}
+.nav-notif {
+  position: absolute;
+  top: -2px; right: -2px;
+  width: 8px; height: 8px;
+  background: var(--fomo);
+  border-radius: 50%;
+  border: 1.5px solid var(--bg);
+}
+.nav-label {
+  font-size: 10px;
+  color: var(--dim);
+  font-family: 'Space Mono', monospace;
+  letter-spacing: 0.5px;
+}
+.nav-tab.active .nav-label { color: var(--gold); }
+.nav-tab.active .nav-icon-wrap { filter: drop-shadow(0 0 8px currentColor); }
+
+/* ── SCROLLABLE CONTENT ── */
+.scroll-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.scroll-content::-webkit-scrollbar { display: none; }
+
+/* ═══════════════════════════════════════
+   SCREEN 1 — HOME / TREE
+═══════════════════════════════════════ */
+#screen-home {
+  background: var(--bg);
+  position: relative;
+}
+
+/* Starfield */
+.starfield {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.star {
+  position: absolute;
+  background: white;
+  border-radius: 50%;
+  animation: twinkle linear infinite;
+}
+@keyframes twinkle {
+  0%,100% { opacity: 0.1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.5); }
+}
+
+.home-scroll { padding: 16px 20px 20px; position: relative; z-index: 2; }
+
+.home-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+.greeting-text {
+  font-family: 'EB Garamond', serif;
+  font-size: 22px;
+  font-style: italic;
+  line-height: 1.2;
+}
+.greeting-sub {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  margin-top: 2px;
+  letter-spacing: 1px;
+}
+.avatar-btn {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #C85050, #8B2020);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 600; color: white;
+  cursor: pointer;
+  border: 1.5px solid rgba(255,255,255,0.15);
+}
+
+/* TREE SECTION */
+.tree-section {
+  background: linear-gradient(180deg, rgba(26,28,40,0.8) 0%, rgba(18,20,30,0.95) 100%);
+  border: 1px solid var(--border2);
+  border-radius: 24px;
+  padding: 20px;
+  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden;
+}
+.tree-section::before {
+  content: '';
+  position: absolute;
+  bottom: -40px; left: 50%;
+  transform: translateX(-50%);
+  width: 300px; height: 150px;
+  background: radial-gradient(ellipse, rgba(106,184,144,0.08) 0%, transparent 70%);
+}
+
+.tree-label-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 16px;
+}
+.tree-stage-text {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--mint);
+}
+.tree-xp-text {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+}
+
+/* SVG Tree */
+.tree-canvas {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 180px;
+  position: relative;
+}
+
+/* XP Bar */
+.xp-bar-wrap { margin-top: 16px; }
+.xp-track {
+  height: 4px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 100px;
+  overflow: hidden;
+}
+.xp-fill {
+  height: 100%;
+  width: 68%;
+  background: linear-gradient(to right, var(--mint), #A8E8C0);
+  border-radius: 100px;
+  position: relative;
+}
+.xp-fill::after {
+  content: '';
+  position: absolute;
+  right: 0; top: -2px;
+  width: 8px; height: 8px;
+  background: #A8E8C0;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #A8E8C0;
+}
+.xp-labels {
+  display: flex; justify-content: space-between;
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--dim);
+  font-family: 'Space Mono', monospace;
+}
+
+/* REEMO ornaments on tree */
+.reemo-ornaments {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.ornament {
+  position: absolute;
+  font-size: 14px;
+  animation: float-orb ease-in-out infinite;
+  opacity: 0.85;
+}
+@keyframes float-orb {
+  0%,100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-5px) rotate(10deg); }
+}
+
+/* DAILY CHECK-IN BUTTON */
+.checkin-card {
+  background: linear-gradient(135deg, rgba(212,168,75,0.12) 0%, rgba(212,168,75,0.05) 100%);
+  border: 1px solid rgba(212,168,75,0.25);
+  border-radius: 20px;
+  padding: 18px 20px;
+  margin-bottom: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.checkin-card::after {
+  content: '';
+  position: absolute;
+  top: -30px; right: -30px;
+  width: 120px; height: 120px;
+  background: radial-gradient(circle, rgba(212,168,75,0.1) 0%, transparent 70%);
+}
+.checkin-card:active { transform: scale(0.98); }
+.checkin-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.checkin-glyph { font-size: 22px; }
+.checkin-title {
+  font-family: 'EB Garamond', serif;
+  font-size: 17px;
+  font-style: italic;
+  color: var(--text);
+}
+.checkin-sub { font-size: 11px; color: var(--muted); font-family: 'Space Mono', monospace; letter-spacing: 0.5px; }
+.checkin-prompt {
+  font-size: 13px;
+  color: rgba(237,232,224,0.7);
+  line-height: 1.5;
+  font-family: 'EB Garamond', serif;
+  font-style: italic;
+}
+.checkin-cta {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-top: 12px;
+  background: var(--gold);
+  color: #0A0C14;
+  border-radius: 100px;
+  padding: 8px 18px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* RECENT MOODS */
+.section-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px;
+}
+.section-title {
+  font-family: 'EB Garamond', serif;
+  font-size: 16px;
+  font-style: italic;
+}
+.section-link { font-size: 11px; color: var(--mint); font-family: 'Space Mono', monospace; cursor: pointer; }
+
+.mood-history { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.mood-history::-webkit-scrollbar { display: none; }
+.mood-pill {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-radius: 100px;
+  border: 1px solid rgba(255,255,255,0.1);
+  font-size: 11px;
+  display: flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.mood-pill:active { transform: scale(0.96); }
+
+/* ASSIGNED CARD */
+.assigned-card {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  padding: 16px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex; gap: 14px; align-items: flex-start;
+}
+.assigned-card:active { transform: scale(0.99); }
+.assigned-icon {
+  width: 44px; height: 44px;
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0;
+}
+.assigned-info { flex: 1; }
+.assigned-from { font-size: 10px; color: var(--muted); font-family: 'Space Mono', monospace; letter-spacing: 1px; margin-bottom: 4px; }
+.assigned-name { font-size: 14px; font-weight: 500; margin-bottom: 3px; }
+.assigned-meta { font-size: 11px; color: var(--muted); }
+.assigned-btn {
+  background: var(--mint-lt);
+  border: 1px solid rgba(106,184,144,0.25);
+  border-radius: 100px;
+  padding: 5px 12px;
+  font-size: 11px;
+  color: var(--mint);
+  font-weight: 500;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+/* ═══════════════════════════════════════
+   SCREEN 2 — MOOD / CHECK-IN
+═══════════════════════════════════════ */
+#screen-mood { background: var(--bg); }
+
+.mood-hero {
+  padding: 20px 24px 0;
+  text-align: center;
+}
+.mood-hero-title {
+  font-family: 'EB Garamond', serif;
+  font-size: 28px;
+  font-style: italic;
+  line-height: 1.2;
+  margin-bottom: 6px;
+}
+.mood-hero-sub {
+  font-size: 12px;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  letter-spacing: 1px;
+}
+
+.reemo-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 20px 16px;
+}
+
+.reemo-tile {
+  border-radius: 20px;
+  padding: 18px 12px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
+  border: 1.5px solid rgba(255,255,255,0.06);
+  position: relative;
+  overflow: hidden;
+}
+.reemo-tile::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.reemo-tile:active, .reemo-tile.selected {
+  transform: scale(1.06);
+  border-color: rgba(255,255,255,0.25);
+}
+.reemo-tile.selected::before { opacity: 1; }
+
+.reemo-face { font-size: 36px; line-height: 1; }
+.reemo-name {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  opacity: 0.8;
+  text-align: center;
+  line-height: 1.2;
+}
+.reemo-sub {
+  font-size: 9px;
+  opacity: 0.45;
+  text-align: center;
+  line-height: 1.3;
+}
+.selected-check {
+  position: absolute;
+  top: 8px; right: 8px;
+  width: 18px; height: 18px;
+  background: white;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.reemo-tile.selected .selected-check { opacity: 1; }
+
+.multi-select-hint {
+  text-align: center;
+  font-size: 11px;
+  color: var(--dim);
+  font-family: 'Space Mono', monospace;
+  padding: 0 24px 16px;
+  letter-spacing: 0.5px;
+}
+
+.checkin-continue-btn {
+  margin: 0 16px 20px;
+  background: var(--gold);
+  color: #0A0C14;
+  border-radius: 16px;
+  height: 52px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.5px;
+}
+.checkin-continue-btn:active { transform: scale(0.98); opacity: 0.9; }
+
+/* ═══════════════════════════════════════
+   SCREEN 3 — JOURNAL
+═══════════════════════════════════════ */
+#screen-journal {
+  background: var(--bg);
+}
+
+.journal-header {
+  padding: 16px 20px 0;
+  display: flex; align-items: center; gap: 12px;
+}
+.journal-header-title {
+  font-family: 'EB Garamond', serif;
+  font-size: 22px;
+  font-style: italic;
+  flex: 1;
+}
+
+.journal-entry-card {
+  margin: 16px 16px 0;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  overflow: hidden;
+}
+.journal-entry-top {
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.journal-date {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+.journal-reemo-tag {
+  display: flex; align-items: center; gap: 5px;
+  font-size: 11px;
+  color: var(--cooked);
+  background: rgba(112,128,216,0.12);
+  border: 1px solid rgba(112,128,216,0.2);
+  border-radius: 100px;
+  padding: 3px 10px;
+}
+
+.journal-prompt {
+  padding: 14px 16px 8px;
+  font-family: 'EB Garamond', serif;
+  font-size: 15px;
+  font-style: italic;
+  color: var(--muted);
+  line-height: 1.5;
+  border-bottom: 1px solid var(--border);
+}
+
+.journal-textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  padding: 14px 16px;
+  font-size: 14px;
+  font-family: 'EB Garamond', serif;
+  color: var(--text);
+  line-height: 1.7;
+  min-height: 160px;
+}
+.journal-textarea::placeholder { color: var(--dim); font-style: italic; }
+
+.journal-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  align-items: center;
+}
+.j-tool {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; cursor: pointer;
+  transition: all 0.15s;
+}
+.j-tool:hover { background: var(--surface3); }
+.j-spacer { flex: 1; }
+.j-save-btn {
+  background: var(--mint);
+  color: var(--bg);
+  border-radius: 10px;
+  padding: 7px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Past entries */
+.past-entry {
+  margin: 10px 16px 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.past-entry:last-child { margin-bottom: 20px; }
+.past-entry:active { transform: scale(0.99); }
+.pe-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.pe-date { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--dim); letter-spacing: 1px; }
+.pe-reemo { font-size: 14px; }
+.pe-text {
+  font-family: 'EB Garamond', serif;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ═══════════════════════════════════════
+   SCREEN 4 — MESSAGES
+═══════════════════════════════════════ */
+#screen-messages { background: var(--bg); }
+
+.msg-header {
+  padding: 16px 20px 12px;
+  display: flex; align-items: center; gap: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.therapist-info { flex: 1; }
+.therapist-name { font-size: 15px; font-weight: 600; }
+.therapist-role {
+  font-size: 10px; color: var(--muted);
+  font-family: 'Space Mono', monospace; letter-spacing: 1px;
+}
+.therapist-avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--mint), #2D7A5A);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 600; color: white;
+  position: relative;
+}
+.online-dot {
+  position: absolute;
+  bottom: 1px; right: 1px;
+  width: 10px; height: 10px;
+  background: #40C060;
+  border-radius: 50%;
+  border: 2px solid var(--bg);
+}
+
+.msg-chat { padding: 12px 16px; display: flex; flex-direction: column; gap: 12px; }
+
+.msg-row { display: flex; gap: 8px; align-items: flex-end; }
+.msg-row.me { flex-direction: row-reverse; }
+
+.chat-av {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600; color: white;
+  flex-shrink: 0;
+}
+.chat-bub {
+  max-width: 72%;
+  padding: 10px 14px;
+  border-radius: 16px;
+  font-size: 14px;
+  line-height: 1.55;
+  font-family: 'EB Garamond', serif;
+}
+.msg-row.them .chat-bub {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 4px 16px 16px 16px;
+  color: var(--text);
+}
+.msg-row.me .chat-bub {
+  background: linear-gradient(135deg, rgba(106,184,144,0.25), rgba(60,140,100,0.2));
+  border: 1px solid rgba(106,184,144,0.25);
+  border-radius: 16px 16px 4px 16px;
+  color: var(--text);
+}
+.msg-time-label {
+  font-size: 9px;
+  color: var(--dim);
+  font-family: 'Space Mono', monospace;
+  padding: 4px 12px;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+.msg-input-area {
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px 16px;
+  border-top: 1px solid var(--border);
+  align-items: flex-end;
+}
+.msg-input-box {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-family: 'EB Garamond', serif;
+  font-style: italic;
+  color: var(--text);
+  outline: none;
+  resize: none;
+  min-height: 40px;
+  max-height: 100px;
+  line-height: 1.4;
+  transition: border-color 0.15s;
+}
+.msg-input-box:focus { border-color: rgba(106,184,144,0.4); background: var(--surface3); }
+.msg-input-box::placeholder { color: var(--dim); }
+.msg-send {
+  width: 40px; height: 40px;
+  background: var(--mint);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; cursor: pointer; flex-shrink: 0;
+  color: var(--bg); font-weight: 700;
+  transition: all 0.15s;
+}
+.msg-send:active { transform: scale(0.92); }
+
+/* ═══════════════════════════════════════
+   GLOBAL ELEMENTS
+═══════════════════════════════════════ */
+.section-pad { padding: 0 16px; margin-bottom: 20px; }
+.divider-line { height: 1px; background: var(--border); margin: 16px 0; }
+
+/* Constellation decoration */
+.constellation {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0.15;
+}
+
+/* Screen label */
+/* ── AUTH OVERLAY (Phase 1) ── */
+.auth-overlay{position:fixed;inset:0;z-index:9999;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:28px;}
+.auth-overlay.hidden{display:none;}
+.auth-card{width:100%;max-width:360px;}
+.auth-logo{font-family:'EB Garamond',serif;font-size:34px;font-weight:600;letter-spacing:1px;text-align:center;margin-bottom:6px;}
+.auth-logo .colon{color:var(--mint);}
+.auth-tag{text-align:center;font-size:12px;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:1px;margin-bottom:30px;}
+.auth-field{margin-bottom:14px;}
+.auth-field label{display:block;font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;}
+.auth-field input{width:100%;padding:13px 14px;background:var(--surface);border:1px solid var(--surface3);border-radius:12px;color:#fff;font-family:'DM Sans',sans-serif;font-size:15px;outline:none;}
+.auth-field input:focus{border-color:var(--mint);}
+.auth-btn{width:100%;padding:14px;border:none;border-radius:12px;background:linear-gradient(135deg,#6AB890,#3E8A60);color:#06140C;font-weight:600;font-size:15px;font-family:'DM Sans',sans-serif;cursor:pointer;margin-top:6px;}
+.auth-btn:disabled{opacity:0.5;cursor:default;}
+.auth-switch{text-align:center;font-size:13px;color:var(--muted);margin-top:18px;}
+.auth-switch a{color:var(--mint);cursor:pointer;text-decoration:underline;}
+.auth-msg{font-size:13px;text-align:center;margin-top:14px;min-height:18px;}
+.auth-msg.err{color:#E0808A;}
+.auth-msg.ok{color:#6AB890;}
+.screen-label {
+  padding: 16px 20px 4px;
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+/* Tab back btn */
+.back-btn {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; cursor: pointer; color: var(--muted);
+  flex-shrink: 0;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════ AUTH OVERLAY (Phase 1) ═══════ -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-card">
+    <div class="auth-logo">Re<span class="colon">:</span>Emo</div>
+    <div class="auth-tag">· your space to grow ·</div>
+
+    <!-- Sign in -->
+    <div id="authSignin">
+      <div class="auth-field"><label>Email</label><input id="si_email" type="email" autocomplete="email" placeholder="you@email.com"></div>
+      <div class="auth-field"><label>Password</label><input id="si_pass" type="password" autocomplete="current-password" placeholder="••••••••"></div>
+      <button class="auth-btn" id="si_btn" onclick="doSignIn()">Sign in</button>
+      <div class="auth-switch">New here? <a onclick="authMode('signup')">Activate your account</a></div>
+    </div>
+
+    <!-- Sign up -->
+    <div id="authSignup" style="display:none">
+      <div class="auth-field"><label>Email your provider has on file</label><input id="su_email" type="email" autocomplete="email" placeholder="you@email.com"></div>
+      <div class="auth-field"><label>Create a password</label><input id="su_pass" type="password" autocomplete="new-password" placeholder="at least 8 characters"></div>
+      <button class="auth-btn" id="su_btn" onclick="doSignUp()">Activate account</button>
+      <div class="auth-switch">Already activated? <a onclick="authMode('signin')">Sign in</a></div>
+    </div>
+
+    <div class="auth-msg" id="authMsg"></div>
+  </div>
+</div>
+
+<div class="phone-shell">
+
+  <!-- Dynamic Island -->
+  <div class="dynamic-island"></div>
+
+  <!-- ═══════ SCREEN: HOME ═══════ -->
+  <div id="screen-home" class="screen active">
+
+    <!-- Starfield -->
+    <div class="starfield" id="starfield"></div>
+
+    <div class="scroll-content">
+      <div class="home-scroll">
+
+        <!-- Header -->
+        <div class="home-header">
+          <div>
+            <div class="greeting-text" id="greetingText">Good morning ✦</div>
+            <div class="greeting-sub" id="greetingSub">Welcome back</div>
+          </div>
+          <div class="avatar-btn" id="avatarBtn" onclick="doSignOut()">··</div>
+        </div>
+
+        <!-- Tree Section -->
+        <div class="tree-section">
+          <div class="tree-label-row">
+            <div class="tree-stage-text">✦ Your Rainforest Tree</div>
+            <div class="tree-xp-text">680 / 1000 xp</div>
+          </div>
+
+          <div class="tree-canvas">
+            <!-- SVG Tree -->
+            <svg width="200" height="170" viewBox="0 0 200 170" style="position:relative;z-index:2;">
+              <!-- Ground mist -->
+              <ellipse cx="100" cy="165" rx="70" ry="12" fill="rgba(106,184,144,0.06)"/>
+
+              <!-- Roots -->
+              <path d="M88,155 Q78,162 62,165" stroke="#4A3020" stroke-width="3" fill="none" stroke-linecap="round"/>
+              <path d="M100,158 Q100,165 90,168" stroke="#4A3020" stroke-width="3" fill="none" stroke-linecap="round"/>
+              <path d="M112,155 Q122,162 138,165" stroke="#4A3020" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+              <!-- Trunk -->
+              <rect x="93" y="100" width="14" height="58" rx="4" fill="url(#trunk-grad)"/>
+              <defs>
+                <linearGradient id="trunk-grad" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stop-color="#5A3A1A"/>
+                  <stop offset="40%" stop-color="#7A5030"/>
+                  <stop offset="100%" stop-color="#5A3A1A"/>
+                </linearGradient>
+                <radialGradient id="canopy-3" cx="50%" cy="40%">
+                  <stop offset="0%" stop-color="rgba(120,220,150,0.3)"/>
+                  <stop offset="100%" stop-color="rgba(0,0,0,0)"/>
+                </radialGradient>
+              </defs>
+
+              <!-- Branch left -->
+              <path d="M96,120 Q72,110 55,95" stroke="#5A3A1A" stroke-width="5" fill="none" stroke-linecap="round"/>
+              <!-- Branch right -->
+              <path d="M104,115 Q128,102 145,88" stroke="#5A3A1A" stroke-width="5" fill="none" stroke-linecap="round"/>
+              <!-- Branch up-left -->
+              <path d="M98,108 Q84,90 78,72" stroke="#5A3A1A" stroke-width="4" fill="none" stroke-linecap="round"/>
+              <!-- Branch up-right -->
+              <path d="M102,105 Q116,88 122,70" stroke="#5A3A1A" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+              <!-- Canopy layers — layered circles -->
+              <circle cx="100" cy="72" r="46" fill="#1E5A2E" opacity="0.9"/>
+              <circle cx="100" cy="72" r="42" fill="#265E34" opacity="0.9"/>
+              <circle cx="88" cy="80" r="30" fill="#2A6838" opacity="0.8"/>
+              <circle cx="112" cy="76" r="28" fill="#286036" opacity="0.8"/>
+              <circle cx="100" cy="58" r="34" fill="#30703E" opacity="0.9"/>
+              <circle cx="100" cy="58" r="34" fill="url(#canopy-3)"/>
+              <!-- highlight -->
+              <circle cx="88" cy="50" r="22" fill="#3A8048" opacity="0.6"/>
+              <circle cx="86" cy="48" r="14" fill="#44904E" opacity="0.5"/>
+              <!-- glow at top -->
+              <circle cx="100" cy="42" r="20" fill="rgba(80,180,100,0.12)"/>
+
+              <!-- Leaf details -->
+              <circle cx="62" cy="92" r="16" fill="#2A6838" opacity="0.7"/>
+              <circle cx="140" cy="84" r="14" fill="#2A6838" opacity="0.7"/>
+              <circle cx="78" cy="68" r="12" fill="#326840" opacity="0.7"/>
+              <circle cx="122" cy="64" r="11" fill="#326840" opacity="0.7"/>
+            </svg>
+
+            <!-- REEMO ornaments -->
+            <div class="reemo-ornaments">
+              <div class="ornament" style="left:36%;top:28%;animation-duration:3s;animation-delay:0s;">⚡</div>
+              <div class="ornament" style="left:58%;top:22%;animation-duration:3.5s;animation-delay:0.8s;">💜</div>
+              <div class="ornament" style="left:22%;top:50%;animation-duration:4s;animation-delay:1.2s;opacity:0.5;">🌀</div>
+              <div class="ornament" style="left:68%;top:45%;animation-duration:3.2s;animation-delay:0.4s;opacity:0.5;">🧂</div>
+            </div>
+          </div>
+
+          <!-- XP Bar -->
+          <div class="xp-bar-wrap">
+            <div class="xp-track"><div class="xp-fill"></div></div>
+            <div class="xp-labels"><span>Sapling</span><span>68% → Young Tree</span></div>
+          </div>
+        </div>
+
+        <!-- Daily Check-in -->
+        <div class="checkin-card" onclick="goScreen('screen-mood')">
+          <div class="checkin-top">
+            <div class="checkin-glyph">✦</div>
+            <div>
+              <div class="checkin-title">How are you feeling?</div>
+              <div class="checkin-sub">Today's check-in · not yet done</div>
+            </div>
+          </div>
+          <div class="checkin-prompt">"The tree grows when you show up, even on the days it's hard."</div>
+          <div class="checkin-cta">Check in now →</div>
+        </div>
+
+        <!-- Recent moods -->
+        <div class="section-pad">
+          <div class="section-head">
+            <div class="section-title">Recent moods</div>
+            <div class="section-link">See all →</div>
+          </div>
+          <div class="mood-history">
+            <div class="mood-pill" style="background:rgba(112,128,216,0.12);border-color:rgba(112,128,216,0.25);color:#9AA0E0;">⚡ Cooked</div>
+            <div class="mood-pill" style="background:rgba(112,128,216,0.1);border-color:rgba(112,128,216,0.2);color:#9AA0E0;">⚡ Cooked</div>
+            <div class="mood-pill" style="background:rgba(160,80,208,0.12);border-color:rgba(160,80,208,0.25);color:#C080E0;">🌀 Spiraling</div>
+            <div class="mood-pill" style="background:rgba(192,112,240,0.1);border-color:rgba(192,112,240,0.2);color:#C898F0;">💜 Delulu</div>
+            <div class="mood-pill" style="background:rgba(112,128,216,0.1);border-color:rgba(112,128,216,0.2);color:#9AA0E0;">⚡ Cooked</div>
+          </div>
+        </div>
+
+        <!-- Assigned Worksheets -->
+        <div class="section-pad">
+          <div class="section-head">
+            <div class="section-title" id="assignedFrom">From your provider</div>
+            <div class="section-link">View all →</div>
+          </div>
+          <div id="assignedList">
+            <div class="assigned-card"><div class="assigned-info"><div class="assigned-meta">Loading your activities…</div></div></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ SCREEN: MOOD CHECK-IN ═══════ -->
+  <div id="screen-mood" class="screen">
+    <div class="screen-label">· mood check-in ·</div>
+    <div class="mood-hero">
+      <div class="mood-hero-title">Which REEMO are you<br/>carrying right now?</div>
+      <div class="mood-hero-sub">pick as many as true · Saturday, 23 May</div>
+    </div>
+
+    <div class="scroll-content">
+      <div class="reemo-grid">
+        <!-- DELULU -->
+        <div class="reemo-tile" onclick="toggleReemo(this)" style="background:rgba(192,112,240,0.08);">
+          <div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 30%,rgba(192,112,240,0.15),transparent 70%);border-radius:20px;"></div>
+          <div class="selected-check" style="color:var(--delulu);">✓</div>
+          <div class="reemo-face">✨</div>
+          <div class="reemo-name" style="color:var(--delulu);">DELULU</div>
+          <div class="reemo-sub">hope + denial</div>
+        </div>
+        <!-- DOPAMINE-HIT -->
+        <div class="reemo-tile" onclick="toggleReemo(this)" style="background:rgba(240,176,32,0.08);">
+          <div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 30%,rgba(240,176,32,0.15),transparent 70%);border-radius:20px;"></div>
+          <div class="selected-check" style="color:var(--dopamine);">✓</div>
+          <div class="reemo-face">⚡</div>
+          <div class="reemo-name" style="color:var(--dopamine);">DOPAMINE</div>
+          <div class="reemo-sub">joy + craving</div>
+        </div>
+        <!-- COOKED -->
+        <div class="reemo-tile selected" onclick="toggleReemo(this)" style="background:rgba(112,128,216,0.1);">
+          <div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 30%,rgba(112,128,216,0.2),transparent 70%);border-radius:20px;"></div>
+          <div class="selected-check" style="color:var(--cooked);">✓</div>
+          <div class="reemo-face">🌫️</div>
+          <div class="reemo-name" style="color:var(--cooked);">COOKED</div>
+          <div class="reemo-sub">exhausted + empty</div>
+        </div>
+        <!-- TOXIC -->
+        <div class="reemo-tile" onclick="toggleReemo(this)" style="background:rgba(80,184,64,0.08);">
+          <div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 30%,rgba(80,184,64,0.15),transparent 70%);border-radius:20px;"></div>
+          <div class="selected-check" style="color:var(--toxic);">✓</div>
+          <div class="reemo-face">☢️</div>
+          <div class="reemo-name" style="color:var(--toxic);">TOXIC</div>
+          <div class="reemo-sub">anger + shame</div>
+        </div>
+        <!-- FOMO -->
+        <div class="reemo-tile" onclick="toggleReemo(this)" style="background:rgba(224,112,48,0.08);">
+          <div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 30%,rgba(224,112,48,0.15),transparent 70%);border-radius:20px;"></div>
+          <div class="selected-check" style="color:var(--fomo);">✓</div>
+          <div class="reemo-face">📱</div>
+          <div class="reemo-name" style="color:var(--fomo);">FOMO</div>
+          <div class="reemo-sub">fear + missing out</div>
+        </div>
+        <!-- SPIRALING -->
+        <div class="reemo-tile" onclick="toggleReemo(this)" style="background:rgba(160,80,208,0.08);">
+          <div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 30%,rgba(160,80,208,0.2),transparent 70%);border-radius:20px;"></div>
+          <div class="selected-check" style="color:var(--spiral);">✓</div>
+          <div class="reemo-face">🌀</div>
+          <div class="reemo-name" style="color:var(--spiral);">SPIRALING</div>
+          <div class="reemo-sub">fear + spinning</div>
+        </div>
+        <!-- SALTY -->
+        <div class="reemo-tile" onclick="toggleReemo(this)" style="background:rgba(80,144,200,0.08);grid-column:1/-1;flex-direction:row;justify-content:center;gap:16px;padding:14px 20px;">
+          <div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(80,144,200,0.15),transparent 70%);border-radius:20px;"></div>
+          <div class="selected-check" style="color:var(--salty);">✓</div>
+          <div class="reemo-face" style="font-size:28px;">🧂</div>
+          <div>
+            <div class="reemo-name" style="color:var(--salty);font-size:10px;">SALTY</div>
+            <div class="reemo-sub">anger + contempt + noted</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="multi-select-hint">it's complicated. pick more than one.</div>
+      <div class="checkin-continue-btn" onclick="goScreen('screen-journal')">Continue → Write about it</div>
+    </div>
+  </div>
+
+  <!-- ═══════ SCREEN: JOURNAL ═══════ -->
+  <div id="screen-journal" class="screen">
+    <div class="journal-header">
+      <div class="back-btn" onclick="goScreen('screen-home')">←</div>
+      <div class="journal-header-title">Journal</div>
+      <div style="font-size:11px;color:var(--muted);font-family:'Space Mono',monospace;">23 May</div>
+    </div>
+
+    <div class="scroll-content">
+      <!-- Today's entry -->
+      <div class="journal-entry-card">
+        <div class="journal-entry-top">
+          <div class="journal-date">TODAY · SAT 23 MAY · 10:12AM</div>
+          <div class="journal-reemo-tag">⚡ COOKED</div>
+        </div>
+        <div class="journal-prompt">"What were you doing, and for who, in the months before you got to this point?"</div>
+        <textarea class="journal-textarea" placeholder="Start writing — this is just for you. Dr. Rajini can only see if you choose to share…"></textarea>
+        <div class="journal-toolbar">
+          <div class="j-tool">🎤</div>
+          <div class="j-tool">📷</div>
+          <div class="j-tool">😶</div>
+          <div class="j-spacer"></div>
+          <div class="j-save-btn">Save entry</div>
+        </div>
+      </div>
+
+      <!-- Past entries -->
+      <div style="padding:16px 16px 8px;">
+        <div class="section-title">Past entries</div>
+      </div>
+
+      <div class="past-entry">
+        <div class="pe-top">
+          <div class="pe-date">WED 21 MAY</div>
+          <div class="pe-reemo">🌀 🧂</div>
+        </div>
+        <div class="pe-text">I don't know why I got so angry at mum tonight. She was just asking about dinner and I just... snapped. I think I'm more tired than I'm letting myself admit.</div>
+      </div>
+
+      <div class="past-entry">
+        <div class="pe-top">
+          <div class="pe-date">MON 19 MAY</div>
+          <div class="pe-reemo">⚡</div>
+        </div>
+        <div class="pe-text">Did the breathing exercise during my lunch break. It actually helped a little. Still felt the tightness when I thought about the review but it didn't spiral as bad.</div>
+      </div>
+
+      <div class="past-entry">
+        <div class="pe-top">
+          <div class="pe-date">SAT 17 MAY</div>
+          <div class="pe-reemo">💜 ✨</div>
+        </div>
+        <div class="pe-text">Feeling a little better today. Made congee, watched a show. Maybe things will be okay. Maybe I'm being delulu but I think that's okay for now.</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════ SCREEN: MESSAGES ═══════ -->
+  <div id="screen-messages" class="screen">
+    <div class="msg-header">
+      <div class="therapist-avatar">DR<div class="online-dot"></div></div>
+      <div class="therapist-info">
+        <div class="therapist-name">Dr. Rajini Kaur</div>
+        <div class="therapist-role">Clinical Psychologist · Online</div>
+      </div>
+      <div style="font-size:18px;opacity:0.4;">ⓘ</div>
+    </div>
+
+    <div class="scroll-content">
+      <div class="msg-chat">
+        <div class="msg-time-label">TODAY · 9:14AM</div>
+
+        <div class="msg-row me">
+          <div class="chat-av" style="background:linear-gradient(135deg,#C85050,#8B2020);">AM</div>
+          <div class="chat-bub">Hi Dr Rajini, I tried the breathing exercise you sent. It helped a bit during lunch when I started feeling the tightness again 🙏</div>
+        </div>
+
+        <div class="msg-row them">
+          <div class="chat-av" style="background:linear-gradient(135deg,var(--mint),#2D7A5A);">DR</div>
+          <div class="chat-bub">That's really good to hear, Aisha. I noticed from your REEMO check-ins that the past few evenings have been quite heavy — how are you feeling right now?</div>
+        </div>
+
+        <div class="msg-row me">
+          <div class="chat-av" style="background:linear-gradient(135deg,#C85050,#8B2020);">AM</div>
+          <div class="chat-bub">Cuak about the session today honestly. But also kind of relieved to have it. I filled in the worksheet last night 🌿</div>
+        </div>
+
+        <div class="msg-row them">
+          <div class="chat-av" style="background:linear-gradient(135deg,var(--mint),#2D7A5A);">DR</div>
+          <div class="chat-bub">That means a lot — and that worksheet took courage. I'll review it before we start. See you at 10 🌿</div>
+        </div>
+
+        <div class="msg-time-label">9:48AM</div>
+
+      </div>
+    </div>
+
+    <div class="msg-input-area">
+      <textarea class="msg-input-box" placeholder="Message Dr. Rajini…" rows="1" id="client-msg-input" onkeydown="sendClientMsg(event)"></textarea>
+      <div class="msg-send" onclick="sendClientMsg({key:'Enter'})">↑</div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="bottom-nav">
+    <div class="nav-tab active" onclick="goScreen('screen-home');setNav(this)">
+      <div class="nav-icon-wrap">🌿</div>
+      <div class="nav-label">Home</div>
+    </div>
+    <div class="nav-tab" onclick="goScreen('screen-mood');setNav(this)">
+      <div class="nav-icon-wrap">
+        ✦
+        <div class="nav-notif"></div>
+      </div>
+      <div class="nav-label">Check-in</div>
+    </div>
+    <div class="nav-tab" onclick="goScreen('screen-journal');setNav(this)">
+      <div class="nav-icon-wrap">📖</div>
+      <div class="nav-label">Journal</div>
+    </div>
+    <div class="nav-tab" onclick="goScreen('screen-messages');setNav(this)">
+      <div class="nav-icon-wrap">
+        💬
+        <div class="nav-notif"></div>
+      </div>
+      <div class="nav-label">Messages</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ═══════ REEMO Client App — Phase 1 (identity + real assignments) ═══════
+// Version B Supabase project (experiment track).
+const SUPABASE_URL="https://torfsowsudppkbeeltqw.supabase.co";
+const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRvcmZzb3dzdWRwcGtiZWVsdHF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA0ODgxOTMsImV4cCI6MjA5NjA2NDE5M30.1kOLgB9IbLJeX0W9Ht0iOO9x9Cgv4lqeU4NoijXIR4E";
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+let ME=null; // {client_id, organization_id, full_name, email}
+
+function esc(s){if(s==null)return '';return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function authMode(m){
+  document.getElementById('authSignin').style.display=(m==='signin')?'block':'none';
+  document.getElementById('authSignup').style.display=(m==='signup')?'block':'none';
+  setMsg('','');
+}
+function setMsg(t,kind){const el=document.getElementById('authMsg');el.textContent=t;el.className='auth-msg'+(kind?(' '+kind):'');}
+
+async function doSignIn(){
+  const email=document.getElementById('si_email').value.trim();
+  const pass=document.getElementById('si_pass').value;
+  if(!email||!pass){setMsg('Enter your email and password.','err');return;}
+  const btn=document.getElementById('si_btn');btn.disabled=true;setMsg('Signing in…','');
+  const {error}=await sb.auth.signInWithPassword({email,password:pass});
+  btn.disabled=false;
+  if(error){setMsg(error.message,'err');return;}
+  await afterAuth();
+}
+
+async function doSignUp(){
+  const email=document.getElementById('su_email').value.trim();
+  const pass=document.getElementById('su_pass').value;
+  if(!email||pass.length<8){setMsg('Use the email your provider has, and a password of 8+ characters.','err');return;}
+  const btn=document.getElementById('su_btn');btn.disabled=true;setMsg('Activating…','');
+  const {data,error}=await sb.auth.signUp({email,password:pass});
+  if(error){btn.disabled=false;setMsg(error.message,'err');return;}
+  // If email confirmation is ON, there is no session yet.
+  if(!data.session){btn.disabled=false;setMsg('Check your email to confirm, then sign in.','ok');authMode('signin');return;}
+  // Session exists → bind this auth user to their client record.
+  const {error:cErr}=await sb.rpc('claim_client_account',{p_email:email});
+  btn.disabled=false;
+  if(cErr){setMsg(cErr.message,'err');return;}
+  await afterAuth();
+}
+
+async function doSignOut(){await sb.auth.signOut();ME=null;showAuth();}
+
+function showAuth(){document.getElementById('authOverlay').classList.remove('hidden');}
+function hideAuth(){document.getElementById('authOverlay').classList.add('hidden');}
+
+// Runs after we have a session. Ensures claim, loads the client, paints dashboard.
+async function afterAuth(){
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user){showAuth();return;}
+  // Resolve client_id via my_client_id(); if not yet claimed, try to claim by email.
+  let {data:cid}=await sb.rpc('my_client_id');
+  if(!cid){
+    const {error}=await sb.rpc('claim_client_account',{p_email:user.email});
+    if(error){setMsg(error.message,'err');showAuth();return;}
+    ({data:cid}=await sb.rpc('my_client_id'));
+  }
+  if(!cid){setMsg('No matching client record found. Contact your provider.','err');showAuth();return;}
+  const {data:c}=await sb.from('clients').select('id,organization_id,full_name,email').eq('id',cid).single();
+  if(!c){setMsg('Could not load your profile.','err');showAuth();return;}
+  ME={client_id:c.id,organization_id:c.organization_id,full_name:c.full_name,email:c.email};
+  hideAuth();
+  paintHome();
+  loadAssignments();
+}
+
+function paintHome(){
+  const first=(ME.full_name||'there').trim().split(/\s+/)[0];
+  const h=new Date().getHours();
+  const part=h<12?'Good morning':(h<18?'Good afternoon':'Good evening');
+  document.getElementById('greetingText').textContent=part+', '+first+' ✦';
+  document.getElementById('greetingSub').textContent='Welcome back';
+  const initials=(ME.full_name||'·').split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('avatarBtn').textContent=initials||'··';
+}
+
+async function loadAssignments(){
+  const box=document.getElementById('assignedList');
+  // Pending assignments addressed to me (RLS scopes to my_client_id()).
+  // NOTE: fetch WITHOUT the embedded forms() join so a restrictive forms
+  // RLS policy can't blank the whole list; titles are looked up after.
+  const {data:asg,error}=await sb.from('form_assignments')
+    .select('id,token,status,form_id,created_at')
+    .eq('status','sent').order('created_at',{ascending:false});
+  if(error){console.warn('[reemo] assignments error',error);box.innerHTML='<div class="assigned-card"><div class="assigned-info"><div class="assigned-meta">Could not load activities.</div></div></div>';return;}
+  console.log('[reemo] assignments returned:',(asg||[]).length);
+  // Collapse duplicates: keep only the newest pending assignment per form,
+  // so re-assigning the same worksheet refreshes the card instead of stacking.
+  // (asg is already ordered created_at desc, so first seen = newest.)
+  const seen=new Set();
+  const asgUnique=(asg||[]).filter(a=>{if(seen.has(a.form_id))return false;seen.add(a.form_id);return true;});
+  if(asgUnique.length!==(asg||[]).length)console.log('[reemo] collapsed to',asgUnique.length,'unique forms');
+  // Recently completed responses, to show a "Done" row.
+  const {data:done}=await sb.from('form_responses')
+    .select('id,submitted_at,form_id').order('submitted_at',{ascending:false}).limit(3);
+
+  // Resolve titles in one batch (may be empty if forms read is restricted).
+  const ids=[...new Set([...asgUnique.map(a=>a.form_id),...(done||[]).map(d=>d.form_id)].filter(Boolean))];
+  let titles={};
+  if(ids.length){
+    const {data:forms}=await sb.from('forms').select('id,title').in('id',ids);
+    (forms||[]).forEach(f=>{titles[f.id]=f.title;});
+  }
+  const titleOf=id=>titles[id]||'Activity';
+  // Use the SAME deployed portal base the therapist app uses. Deriving from
+  // the client app's own location breaks when the app is opened from a
+  // different origin (file://, preview deploy, etc.), so pin it explicitly.
+  const PORTAL_BASE="https://reemov2.vercel.app/REEMO_Client_Form.html";
+
+  let html='';
+  asgUnique.forEach(a=>{
+    const when=new Date(a.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    if(!a.token){console.warn('[reemo] assignment has no token, skipping link',a.id);}
+    const link=PORTAL_BASE+'?t='+encodeURIComponent(a.token||'');
+    console.log('[reemo] card link →',link,'| raw token:',JSON.stringify(a.token),'| len:',(a.token||'').length);
+    const clickable=a.token?(' onclick="location.href=\''+link+'\'"'):'';
+    html+='<div class="assigned-card"'+clickable+'>'+
+      '<div class="assigned-icon" style="background:rgba(212,168,75,0.1);border:1px solid rgba(212,168,75,0.2);">📝</div>'+
+      '<div class="assigned-info"><div class="assigned-from">NEW ACTIVITY</div>'+
+      '<div class="assigned-name">'+esc(titleOf(a.form_id))+'</div>'+
+      '<div class="assigned-meta">Assigned '+when+(a.token?'':' · link unavailable')+'</div></div>'+
+      '<div class="assigned-btn">'+(a.token?'Start →':'—')+'</div></div>';
+  });
+  (done||[]).forEach(d=>{
+    const when=new Date(d.submitted_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+    html+='<div class="assigned-card">'+
+      '<div class="assigned-icon" style="background:rgba(106,184,144,0.1);border:1px solid rgba(106,184,144,0.2);">✓</div>'+
+      '<div class="assigned-info"><div class="assigned-from">COMPLETED</div>'+
+      '<div class="assigned-name">'+esc(titleOf(d.form_id))+'</div>'+
+      '<div class="assigned-meta">Completed '+when+'</div></div>'+
+      '<div class="assigned-btn" style="color:var(--mint);border-color:rgba(106,184,144,0.25);">Done</div></div>';
+  });
+  if(!html)html='<div class="assigned-card"><div class="assigned-info"><div class="assigned-meta">Nothing assigned yet. Your provider will add activities here.</div></div></div>';
+  box.innerHTML=html;
+}
+
+// On load: if already signed in, skip the overlay.
+(async()=>{
+  const {data:{session}}=await sb.auth.getSession();
+  if(session){await afterAuth();}else{showAuth();}
+})();
+</script>
+<script>
+const sf = document.getElementById('starfield');
+for (let i = 0; i < 60; i++) {
+  const s = document.createElement('div');
+  s.className = 'star';
+  const size = Math.random() * 2 + 0.5;
+  s.style.cssText = `
+    width:${size}px;height:${size}px;
+    left:${Math.random()*100}%;top:${Math.random()*100}%;
+    animation-duration:${2+Math.random()*4}s;
+    animation-delay:${Math.random()*4}s;
+  `;
+  sf.appendChild(s);
+}
+
+// ── Navigation ──
+function goScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function setNav(el) {
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── REEMO toggle ──
+function toggleReemo(el) {
+  el.classList.toggle('selected');
+}
+
+// ── Send client message ──
+function sendClientMsg(e) {
+  if (e.key !== 'Enter' || e.shiftKey) return;
+  e.preventDefault();
+  const input = document.getElementById('client-msg-input');
+  if (!input.value.trim()) return;
+  const chat = document.querySelector('#screen-messages .msg-chat');
+  const row = document.createElement('div');
+  row.className = 'msg-row me';
+  row.innerHTML = `<div class="chat-av" style="background:linear-gradient(135deg,#C85050,#8B2020);">AM</div><div class="chat-bub">${input.value}</div>`;
+  chat.appendChild(row);
+  input.value = '';
+  const sc = document.querySelector('#screen-messages .scroll-content');
+  sc.scrollTop = sc.scrollHeight;
+}
+</script>
+</body>
+</html>
